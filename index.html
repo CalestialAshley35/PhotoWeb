@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhotoWeb</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #f0f4f8;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+            font-size: 1rem;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #4CAF50;
+            text-shadow: 0px 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            color: #555;
+            margin-top: 40px;
+        }
+
+        button {
+            padding: 15px 35px;
+            font-size: 1.2rem;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 25px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 3px 3px 15px rgba(0, 0, 0, 0.1), -3px -3px 15px rgba(255, 255, 255, 0.5);
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+            box-shadow: 6px 6px 20px rgba(0, 0, 0, 0.2), -6px -6px 20px rgba(255, 255, 255, 0.5);
+        }
+
+        button:focus {
+            outline: none;
+        }
+
+        #photoContainer {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        #photoContainer video {
+            width: 100%;
+            max-width: 500px;
+            border-radius: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        #photoContainer video:hover {
+            transform: scale(1.03);
+        }
+
+        .photoGallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 30px;
+            width: 100%;
+        }
+
+        .photoGallery img {
+            width: 220px;
+            height: 220px;
+            object-fit: cover;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .photoGallery img:hover {
+            transform: scale(1.1);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .overlay img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .overlay img:hover {
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 600px) {
+            .photoGallery img {
+                width: 100%;
+                height: auto;
+                max-width: 300px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<h1>Take a Photo</h1>
+<button id="takePhotoBtn">Take Photo</button>
+<button id="toggleCameraBtn">Switch to Back Camera</button>
+
+<div id="photoContainer"></div>
+
+<h2>Gallery</h2>
+<div id="galleryContainer" class="photoGallery"></div>
+
+<div id="overlay" class="overlay">
+    <img id="overlayImage" src="" alt="Full-size photo">
+</div>
+
+<script>
+    const takePhotoBtn = document.getElementById("takePhotoBtn");
+    const toggleCameraBtn = document.getElementById("toggleCameraBtn");
+    const photoContainer = document.getElementById("photoContainer");
+    const galleryContainer = document.getElementById("galleryContainer");
+    const overlay = document.getElementById("overlay");
+    const overlayImage = document.getElementById("overlayImage");
+
+    let currentCamera = "user"; // "user" for front camera, "environment" for back camera
+    let currentStream = null;
+
+    // Load saved photos from localStorage
+    function loadSavedPhotos() {
+        const savedPhotos = JSON.parse(localStorage.getItem("photos")) || [];
+        galleryContainer.innerHTML = ''; // Clear previous gallery content
+
+        savedPhotos.forEach((photo, index) => {
+            const imgContainer = document.createElement("div");
+            imgContainer.style.display = "flex";
+            imgContainer.style.flexDirection = "column";
+            imgContainer.style.alignItems = "center";
+
+            const img = document.createElement("img");
+            img.src = photo;
+            img.alt = "Captured Photo";
+
+            // Add click event to view the photo in full screen
+            img.addEventListener("click", () => {
+                overlay.classList.add("active");
+                overlayImage.src = photo;
+            });
+
+            // Create a download button
+            const downloadBtn = document.createElement("button");
+            downloadBtn.textContent = "Download Photo";
+            downloadBtn.style.marginTop = "10px";
+
+            // Set download attribute for the button
+            downloadBtn.addEventListener("click", () => {
+                const link = document.createElement("a");
+                link.href = photo;
+                link.download = `photo_${index + 1}.png`; // Assign unique names to the photos
+                link.click();
+            });
+
+            imgContainer.appendChild(img);
+            imgContainer.appendChild(downloadBtn);
+            galleryContainer.appendChild(imgContainer);
+        });
+    }
+
+    // Call the function to load any saved photos when the page loads
+    loadSavedPhotos();
+
+    // Close the full-size photo on overlay click
+    overlay.addEventListener("click", () => {
+        overlay.classList.remove("active");
+    });
+
+    // Function to toggle between front and back cameras
+    toggleCameraBtn.addEventListener("click", () => {
+        currentCamera = currentCamera === "user" ? "environment" : "user";
+        toggleCameraBtn.textContent =
+            currentCamera === "user" ? "Switch to Back Camera" : "Switch to Front Camera";
+        startCamera();
+    });
+
+    // Function to start the camera
+    function startCamera() {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            const constraints = {
+                video: { facingMode: currentCamera },
+            };
+
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(function (stream) {
+                    currentStream?.getTracks().forEach(track => track.stop()); // Stop previous stream if any
+                    currentStream = stream;
+
+                    // Create video element to show camera preview
+                    const video = document.createElement("video");
+                    video.srcObject = stream;
+                    video.play();
+                    photoContainer.innerHTML = "";
+                    photoContainer.appendChild(video);
+
+                    // Create a capture button
+                    const captureBtn = document.createElement("button");
+                    captureBtn.textContent = "Capture Photo";
+                    photoContainer.appendChild(captureBtn);
+
+                    // Capture the photo when the button is clicked
+                    captureBtn.addEventListener("click", function () {
+                        // Create a canvas to take a snapshot
+                        const canvas = document.createElement("canvas");
+                        const ctx = canvas.getContext("2d");
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                        // Convert canvas to image and save to localStorage
+                        const imgData = canvas.toDataURL("image/png");
+
+                        // Retrieve the existing photos from localStorage
+                        const savedPhotos = JSON.parse(localStorage.getItem("photos")) || [];
+
+                        // Add the new photo to the list
+                        savedPhotos.push(imgData);
+
+                        // Save the updated list of photos back to localStorage
+                        localStorage.setItem("photos", JSON.stringify(savedPhotos));
+
+                        // Stop the camera stream
+                        stream.getTracks().forEach(track =>
+track.stop()
+                        );
+
+                        // Load the updated gallery
+                        loadSavedPhotos();
+
+                        // Clear the photo container and notify the user
+                        photoContainer.innerHTML = "<p>Photo captured and saved!</p>";
+                    });
+                })
+                .catch(function (error) {
+                    console.error("Error accessing the camera:", error);
+                    alert("Unable to access the camera. Please check your device settings.");
+                });
+        } else {
+            alert("Your browser does not support camera access.");
+        }
+    }
+
+    // Start the camera initially when the page loads
+    startCamera();
+
+    // Event listener for the "Take Photo" button
+    takePhotoBtn.addEventListener("click", () => {
+        if (currentStream) {
+            // Trigger the capture button programmatically if camera is active
+            const captureBtn = photoContainer.querySelector("button");
+            if (captureBtn) captureBtn.click();
+        } else {
+            alert("Camera is not active. Please start the camera first.");
+        }
+    });
+</script>
+
+</body>
+  </html>
